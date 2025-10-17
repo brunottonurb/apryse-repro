@@ -6,48 +6,48 @@ const webViewerInstance = await WebViewer.Iframe(
     {
         ui: 'legacy',
         path: '/lib/webviewer',
-        // licenseKey,
+        licenseKey: 'demo:1736852983506:7e8a1d4a03000000007f655284eb37b7fdd3222f7e911d8145025b71d2',
         fullAPI: true,
-        disabledElements: [
-            'downloadButton',
-            'printButton',
-            'highlightToolGroupButton',
-            'underlineToolGroupButton',
-            'strikeoutToolGroupButton',
-            'squigglyToolGroupButton',
-            'stickyToolGroupButton',
-            'freeTextToolGroupButton',
-            'shapeToolGroupButton',
-            'freeHandToolGroupButton',
-            'freeHandHighlightToolGroupButton',
-            'eraserToolButton',
-            'leftPanelButton',
-            'searchButton',
-            'menuButton',
-            'toggleNotesButton',
-            'ribbonsDropdown',
-            // 'selectToolButton',
-            'toolsHeader',
-            'ribbons',
+        // disabledElements: [
+        //     'downloadButton',
+        //     'printButton',
+        //     'highlightToolGroupButton',
+        //     'underlineToolGroupButton',
+        //     'strikeoutToolGroupButton',
+        //     'squigglyToolGroupButton',
+        //     'stickyToolGroupButton',
+        //     'freeTextToolGroupButton',
+        //     'shapeToolGroupButton',
+        //     'freeHandToolGroupButton',
+        //     'freeHandHighlightToolGroupButton',
+        //     'eraserToolButton',
+        //     'leftPanelButton',
+        //     'searchButton',
+        //     'menuButton',
+        //     'toggleNotesButton',
+        //     'ribbonsDropdown',
+        //     // 'selectToolButton',
+        //     'toolsHeader',
+        //     'ribbons',
 
-            // The dropdown menu for the annotation tools, when you select an annotation
-            // 'annotationCommentButton',
-            // 'annotationStyleEditButton',
-            // 'linkButton',
-            'annotationPopup', // disable the whole popup/dropdown menu for annotations
+        //     // The dropdown menu for the annotation tools, when you select an annotation
+        //     // 'annotationCommentButton',
+        //     // 'annotationStyleEditButton',
+        //     // 'linkButton',
+        //     'annotationPopup', // disable the whole popup/dropdown menu for annotations
 
-            // context menu
-            'contextMenuPopup',
+        //     // context menu
+        //     'contextMenuPopup',
 
-            // context menu when selecting text
-            'textPopup',
+        //     // context menu when selecting text
+        //     'textPopup',
 
-            // rotation tools in the dropdown settings menu
-            'rotateHeader',
-            'rotateClockwiseButton',
-            'rotateCounterClockwiseButton',
-            'viewControlsDivider1',
-        ],
+        //     // rotation tools in the dropdown settings menu
+        //     'rotateHeader',
+        //     'rotateClockwiseButton',
+        //     'rotateCounterClockwiseButton',
+        //     'viewControlsDivider1',
+        // ],
         initialDoc: 'https://apryse.s3.amazonaws.com/public/files/samples/WebviewerDemoDoc.pdf',
     },
     element,
@@ -67,33 +67,54 @@ await doc.rotatePages([1], -1);
 
 await new Promise((resolve) => setTimeout(resolve, 5000)); // prevent timing issues, otherwise the render is not correct, page is rotate, but dimensions/coordinates are not updated
 
-// add stamp annotation
-// with random image from picsum.photos
-const res = await fetch('https://picsum.photos/200');
+// 1st step
 
+const res = await fetch('https://picsum.photos/200');
 const imageBlob = await res.blob();
 const reader = new FileReader();
-reader.onloadend = async () => {
-const annot = new Annotations.StampAnnotation({
-    PageNumber: 1,
-    X: 200,
-    Y: 200,
-    Width: 120,
-    Height: 80,
+await new Promise((resolve) => {
+    reader.onloadend = async () => {
+        resolve();
+    };
+    reader.readAsDataURL(imageBlob);
 });
-
+const stampAnnotation = new Annotations.StampAnnotation();
 const base64data = reader.result;
-await annot.setImageData(base64data); // Base64 URL or SVG
+await stampAnnotation.setImageData(base64data);
+stampAnnotation.Width = 200;
+stampAnnotation.Height = 120;
+stampAnnotation.Author = annotationManager.getCurrentUser();
+stampAnnotation.FillColor = new Annotations.Color(0, 0, 0, 0);
+stampAnnotation.NoDelete = false;
+stampAnnotation.NoMove = false;
+stampAnnotation.NoResize = true;
+stampAnnotation.NoRotate = true;
+stampAnnotation.Id = Math.random().toString(36).substr(2, 9);
+stampAnnotation.setCustomData('test123', 'hello world');
+stampAnnotation.setCustomData('testJSON', JSON.stringify({ a: 1, b: 2 }));
 
-// rotate annotation
-annot.Rotation = -90;
-// flip height and width, because I don't know why
-[annot.Height, annot.Width] = [annot.Width, annot.Height];
+// 2nd step
 
-annotationManager.addAnnotation(annot);
-annotationManager.redrawAnnotation(annot);
+const pageNumber = 1;
+const pageRotation = doc.getPageRotation(pageNumber);
+stampAnnotation.PageNumber = pageNumber;
+stampAnnotation.Rotation = pageRotation - 360;
+// if the page is rotated sideways, the width and height of the stamp annotation need to be swapped
+if (pageRotation === 270 || pageRotation === 90) {
+    stampAnnotation.Width = 80;
+    stampAnnotation.Height = 120;
+} else {
+    stampAnnotation.Width = 120;
+    stampAnnotation.Height = 80;
 }
-reader.readAsDataURL(imageBlob);
+const x = 100;
+const y = 150;
+stampAnnotation.X = x;
+stampAnnotation.Y = y;
+
+annotationManager.addAnnotation(stampAnnotation);
+annotationManager.redrawAnnotation(stampAnnotation);
+
 
 // await new Promise((resolve) => setTimeout(resolve, 5000)); // prevent timing issues
 
